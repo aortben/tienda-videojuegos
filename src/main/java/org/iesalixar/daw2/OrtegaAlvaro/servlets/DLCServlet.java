@@ -11,6 +11,7 @@ import org.iesalixar.daw2.OrtegaAlvaro.entity.DLC;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 @WebServlet("/dlcs")
@@ -42,7 +43,7 @@ public class DLCServlet extends HttpServlet {
                     break;
             }
         } catch (SQLException e) {
-            throw new ServletException(e);
+            throw new ServletException("Error en la base de datos", e);
         }
     }
 
@@ -67,26 +68,24 @@ public class DLCServlet extends HttpServlet {
                     break;
             }
         } catch (SQLException e) {
-            throw new ServletException(e);
+            throw new ServletException("Error en la base de datos", e);
         }
     }
 
     private void listDLCs(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+            throws ServletException, IOException, SQLException {
 
-        String idParam = request.getParameter("id");
-        List<DLC> dlcs;
+        String idParam = request.getParameter("videogameId");
+        List<DLC> dlcs = new ArrayList<>();
 
         if (idParam != null && !idParam.isEmpty()) {
             try {
                 int gameId = Integer.parseInt(idParam);
                 dlcs = dlcDAO.getDLCsByGameId(gameId);
             } catch (NumberFormatException e) {
-
                 dlcs = dlcDAO.getAllDLCs();
             }
         } else {
-
             dlcs = dlcDAO.getAllDLCs();
         }
 
@@ -96,8 +95,10 @@ public class DLCServlet extends HttpServlet {
 
     private void showNewForm(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        int videogameId = Integer.parseInt(request.getParameter("videogameId"));
-        request.setAttribute("videogameId", videogameId);
+        String idParam = request.getParameter("videogameId");
+        if (idParam != null && !idParam.isEmpty()) {
+            request.setAttribute("videogameId", Integer.parseInt(idParam));
+        }
         request.getRequestDispatcher("dlc-form.jsp").forward(request, response);
     }
 

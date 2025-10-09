@@ -94,10 +94,8 @@ public class VideogameServlet extends HttpServlet {
         Videogame existing = gameDAO.getGameById(id);
         request.setAttribute("game", existing);
 
-        // opcional: obtener DLCs para el juego y pasarlos a la vista
-        try {
-            request.setAttribute("dlcList", dlcDAO.getDLCsByGameId(id));
-        } catch (SQLException ignored) { /* si no tienes ese método simplemente ignora */ }
+        // Obtener DLCs del juego
+        request.setAttribute("dlcList", dlcDAO.getDLCsByGameId(id));
 
         request.getRequestDispatcher("videogame-form.jsp").forward(request, response);
     }
@@ -118,20 +116,6 @@ public class VideogameServlet extends HttpServlet {
         Videogame newGame = new Videogame(title, genre, platform, price);
         gameDAO.insertGame(newGame);
 
-        // Obtener el id del juego insertado
-        int videogameId = newGame.getId(); // si insertGame rellena el id en el objeto, perfecto
-        if (videogameId <= 0) {
-            // fallback: intentar buscar el juego por título (implementa getGameByTitle si no existe)
-            try {
-                Videogame saved = gameDAO.getGameById(id);
-                if (saved != null) {
-                    videogameId = saved.getId();
-                }
-            } catch (Exception e) {
-                // Si no tienes getGameByTitle, considera modificar insertGame para devolver el id generado.
-            }
-        }
-
         // Procesar DLC opcional
         String dlcName = request.getParameter("dlcName");
         String dlcPriceStr = request.getParameter("dlcPrice");
@@ -139,14 +123,12 @@ public class VideogameServlet extends HttpServlet {
         if (dlcName != null && !dlcName.isBlank() && dlcPriceStr != null && !dlcPriceStr.isBlank()) {
             double dlcPrice = Double.parseDouble(dlcPriceStr);
 
-            if (videogameId > 0) {
-                DLC dlc = new DLC(dlcName, dlcPrice, videogameId);
+            Videogame saved = gameDAO.getGameById(
+                    gameDAO.listAllGames().getLast().getId()
+            );
+            if (saved != null) {
+                DLC dlc = new DLC(dlcName, dlcPrice, saved.getId());
                 dlcDAO.insertDLC(dlc);
-            } else {
-                // Si no hemos podido obtener el id, opcionalmente loguear o mostrar mensaje.
-                request.setAttribute("errorMessage", "Juego creado pero no se pudo asociar el DLC (id del juego desconocido).");
-                request.getRequestDispatcher("videogame-form.jsp").forward(request, response);
-                return;
             }
         }
 
