@@ -99,7 +99,7 @@ public class DLCServlet extends HttpServlet {
         if (idParam != null && !idParam.isEmpty()) {
             request.setAttribute("videogameId", Integer.parseInt(idParam));
         }
-        request.getRequestDispatcher("dlc-form.jsp").forward(request, response);
+        request.getRequestDispatcher("dlcs-form.jsp").forward(request, response);
     }
 
     private void showEditForm(HttpServletRequest request, HttpServletResponse response)
@@ -108,7 +108,7 @@ public class DLCServlet extends HttpServlet {
         DLC existing = dlcDAO.getDLCById(id);
         request.setAttribute("dlc", existing);
         request.setAttribute("videogameId", existing.getVideogameId());
-        request.getRequestDispatcher("dlc-form.jsp").forward(request, response);
+        request.getRequestDispatcher("dlcs-form.jsp").forward(request, response);
     }
 
     private void insertDLC(HttpServletRequest request, HttpServletResponse response)

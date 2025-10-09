@@ -16,4 +16,5 @@ CREATE TABLE IF NOT EXISTS dlc (
     FOREIGN KEY (videogame_id) REFERENCES videogames(id) ON DELETE CASCADE
 );
 
+INSERT INTO dlc ("Moto", "Perro",1);
 
