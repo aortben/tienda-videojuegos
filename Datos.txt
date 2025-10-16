@@ -1,0 +1,280 @@
+🧩 1. DAO (Data Access Object)
+
+📁 org.iesalixar.daw2.OrtegaAlvaro.dao
+
+Aquí va todo lo relacionado con la base de datos: conexión, consultas, inserciones, actualizaciones, etc.
+
+DatabaseConnectionManager →
+🔌 Se encarga de conectarse a la base de datos (usando el .env para URL, usuario y contraseña).
+Implementa el patrón Singleton → solo hay una conexión abierta.
+
+VideogameDAO →
+📜 Es una interfaz que define los métodos CRUD:
+listAllGames(), insertGame(), updateGame(), deleteGame(), etc.
+No tiene código, solo la "promesa" de que alguien los implementará.
+
+VideogameDAOImpl →
+🧱 Es la implementación de esa interfaz.
+Contiene el código SQL real que conecta con la base de datos y ejecuta las operaciones CRUD sobre la tabla videogames.
+
+DataInitializer →
+🌱 Clase auxiliar que normalmente inicializa la base de datos cuando arranca la aplicación (por ejemplo, crea tablas o inserta datos de prueba si no existen).
+
+🎮 2. Entity
+
+📁 org.iesalixar.daw2.OrtegaAlvaro.entity
+
+Videogame →
+📦 Es una clase modelo o entidad, que representa un registro de la tabla videogames en Java.
+Tiene atributos (id, title, genre, platform, price), su constructor, getters/setters, y posiblemente toString() o equals().
+
+👉 En resumen: cada fila de la tabla videogames se convierte en un objeto Videogame.
+
+🎧 3. Listener
+
+📁 org.iesalixar.daw2.OrtegaAlvaro.listener
+
+AppContextListener →
+🏁 Es un escuchador del ciclo de vida de la aplicación web (ServletContextListener).
+Se ejecuta automáticamente cuando el servidor (Tomcat, Jetty, etc.) inicia o apaga la aplicación.
+Suele servir para cosas como:
+
+Iniciar la conexión a la base de datos.
+
+Ejecutar DataInitializer.
+
+Cargar configuraciones globales o variables de entorno.
+
+🌐 4. Servlets
+
+📁 org.iesalixar.daw2.OrtegaAlvaro.servlets
+
+Son las clases que manejan las peticiones HTTP (GET, POST, etc.) y sirven de puente entre el usuario y la base de datos.
+
+VideogameServlet →
+🎮 Controla las operaciones relacionadas con los videojuegos: listar, añadir, modificar o eliminar.
+Llama a los métodos del VideogameDAOImpl y redirige a los JSP correspondientes.
+(Por ejemplo, /videogames → muestra la lista; /add → inserta uno nuevo.)
+
+LanguageServlet →
+🌍 Gestiona el cambio de idioma de la aplicación (por ejemplo, español ↔ inglés).
+Probablemente guarda la preferencia del usuario en una sesión o cookie.
+
+📂 5. Resources y JSP
+
+📁 src/main/resources y src/main/webapp
+
+.env →
+Archivo de configuración con las variables de entorno (URL, usuario y contraseña de la BD).
+Se lee con la librería dotenv.
+
+*.jsp (Java Server Pages) →
+🖥️ Son las páginas web de la aplicación, donde se muestra la información al usuario.
+Se combinan con los Servlets:
+
+El Servlet procesa los datos →
+
+Los pasa a un JSP →
+
+El JSP los muestra en formato HTML.
+
+=======
+
+==============================
+CRUD EN JAVA (Servlets + JSP + DAO)
+==============================
+
+1️⃣ Crear la entidad (modelo)
+-----------------------------
+📁 package: entity
+📄 Ejemplo: Videogame.java
+
+- Representa una tabla de la base de datos (videogames).
+- Contiene atributos, constructores, getters y setters.
+
+public class Videogame {
+    private int id;
+    private String title;
+    private String genre;
+    private String platform;
+    private double price;
+
+    public Videogame() {}
+    public Videogame(int id, String title, String genre, String platform, double price) {
+        this.id = id;
+        this.title = title;
+        this.genre = genre;
+        this.platform = platform;
+        this.price = price;
+    }
+
+    // Getters y Setters
+}
+
+
+2️⃣ Crear la conexión a la base de datos
+---------------------------------------
+📁 package: dao
+📄 DatabaseConnectionManager.java
+
+- Gestiona la conexión a la BD.
+- Usa variables de entorno (.env) para url, usuario y contraseña.
+
+public class DatabaseConnectionManager {
+    private static Connection connection = null;
+
+    public static Connection getConnection() throws SQLException {
+        if (connection == null || connection.isClosed()) {
+            String url = dotenv.get("DB_URL");
+            String user = dotenv.get("DB_USER");
+            String pass = dotenv.get("DB_PASSWORD");
+            connection = DriverManager.getConnection(url, user, pass);
+        }
+        return connection;
+    }
+}
+
+
+3️⃣ Crear la interfaz DAO
+------------------------
+📁 package: dao
+📄 VideogameDAO.java
+
+- Define las operaciones disponibles (CRUD).
+
+public interface VideogameDAO {
+    List<Videogame> listAllGames() throws SQLException;
+    Videogame getGameById(int id) throws SQLException;
+    void insertGame(Videogame game) throws SQLException;
+    void updateGame(Videogame game) throws SQLException;
+    void deleteGame(int id) throws SQLException;
+}
+
+
+4️⃣ Implementar el DAO
+---------------------
+📁 package: dao
+📄 VideogameDAOImpl.java
+
+- Aquí se hacen las consultas SQL reales.
+- Usa PreparedStatement y ResultSet.
+
+public class VideogameDAOImpl implements VideogameDAO {
+    @Override
+    public List<Videogame> listAllGames() throws SQLException {
+        List<Videogame> list = new ArrayList<>();
+        String sql = "SELECT * FROM videogames";
+        try (Connection conn = DatabaseConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(new Videogame(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("genre"),
+                    rs.getString("platform"),
+                    rs.getDouble("price")
+                ));
+            }
+        }
+        return list;
+    }
+    // (insert, update, delete, getById similares)
+}
+
+
+5️⃣ Crear el Servlet controlador
+-------------------------------
+📁 package: servlets
+📄 VideogameServlet.java
+
+- Actúa como controlador.
+- Recibe peticiones del usuario y decide qué hacer.
+- Se comunica con el DAO y con los JSP.
+
+@WebServlet("/videogames")
+public class VideogameServlet extends HttpServlet {
+    private VideogameDAO dao = new VideogameDAOImpl();
+
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String action = request.getParameter("action");
+
+        try {
+            switch (action == null ? "list" : action) {
+                case "new":
+                    request.getRequestDispatcher("videogame-form.jsp").forward(request, response);
+                    break;
+                case "edit":
+                    int id = Integer.parseInt(request.getParameter("id"));
+                    Videogame game = dao.getGameById(id);
+                    request.setAttribute("game", game);
+                    request.getRequestDispatcher("videogame-form.jsp").forward(request, response);
+                    break;
+                default:
+                    List<Videogame> list = dao.listAllGames();
+                    request.setAttribute("listGames", list);
+                    request.getRequestDispatcher("videogames.jsp").forward(request, response);
+                    break;
+            }
+        } catch (SQLException e) {
+            throw new ServletException(e);
+        }
+    }
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String action = request.getParameter("action");
+
+        try {
+            if ("insert".equals(action)) {
+                Videogame game = new Videogame(0,
+                        request.getParameter("title"),
+                        request.getParameter("genre"),
+                        request.getParameter("platform"),
+                        Double.parseDouble(request.getParameter("price")));
+                dao.insertGame(game);
+            } else if ("update".equals(action)) {
+                Videogame game = new Videogame(
+                        Integer.parseInt(request.getParameter("id")),
+                        request.getParameter("title"),
+                        request.getParameter("genre"),
+                        request.getParameter("platform"),
+                        Double.parseDouble(request.getParameter("price")));
+                dao.updateGame(game);
+            } else if ("delete".equals(action)) {
+                int id = Integer.parseInt(request.getParameter("id"));
+                dao.deleteGame(id);
+            }
+            response.sendRedirect("videogames");
+        } catch (SQLException e) {
+            throw new ServletException(e);
+        }
+    }
+}
+
+
+6️⃣ Crear las vistas (JSPs)
+---------------------------
+📁 webapp/
+- videogames.jsp → muestra la lista (READ)
+- videogame-form.jsp → formulario de añadir/editar (CREATE/UPDATE)
+- Cada JSP se comunica con el servlet usando parámetros `action`:
+    - videogames.jsp:
+        - action=new → abrir formulario vacío
+        - action=edit&id=X → abrir formulario con datos
+        - action=delete&id=X → eliminar
+    - videogame-form.jsp:
+        - action=insert → guardar nuevo
+        - action=update → guardar cambios
+
+7️⃣ Flujo general del CRUD
+--------------------------
+| Acción del usuario       | Petición                         | Servlet         | Método DAO             | JSP usado            |
+|--------------------------|---------------------------------|----------------|----------------------|--------------------|
+| Ver lista                | GET /videogames                  | doGet()        | listAllGames()        | videogames.jsp      |
+| Nuevo videojuego         | GET /videogames?action=new       | doGet()        | —                    | videogame-form.jsp  |
+| Guardar nuevo            | POST /videogames?action=insert  | doPost()       | insertGame()          | redirige a lista    |
+| Editar                   | GET /videogames?action=edit&id=X| doGet()        | getGameById()         | videogame-form.jsp  |
+| Guardar edición          | POST /videogames?action=update  | doPost()       | updateGame()          | redirige a lista    |
+| Eliminar                 | POST /videogames?action=delete  | doPost()       | deleteGame()          | redirige a lista    |
